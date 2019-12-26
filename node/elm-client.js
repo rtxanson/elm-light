@@ -85,7 +85,7 @@ startRepl(
 
 function doPackageInstall() {
   try {
-    cp.execSync("elm-package install --yes", {cwd: process.cwd()});
+    cp.execSync("elm package install --yes", {cwd: process.cwd()});
   } catch (e) {
     console.error("Error running package install" + e);
   }
@@ -94,7 +94,7 @@ function doPackageInstall() {
 
 
 function startRepl(error, success, projectPath) {
-  elmGlobals.repl = spawn("elm-repl", ["--interpreter", process.execPath ], {cwd: projectPath});
+  elmGlobals.repl = spawn("elm repl", ["--interpreter", process.execPath ], {cwd: projectPath});
 
   var outBuffer = "";
   elmGlobals.repl.stdout.on("data", function(out) {
@@ -115,7 +115,7 @@ function startRepl(error, success, projectPath) {
 }
 
 function startReactor(error, success, projectPath, port) {
-  elmGlobals.reactor = spawn("elm-reactor", ["--port=" + port], {cwd: projectPath});
+  elmGlobals.reactor = spawn("elm reactor", ["--port=" + port], {cwd: projectPath});
 
   var errBuff = "";
   elmGlobals.reactor.stdout.on("data", function(out) {
@@ -196,7 +196,7 @@ function startMessageListener() {
 
 
 function startWatcher() {
-  var watcher = chokidar.watch(['elm-package.json',
+  var watcher = chokidar.watch(['elm.json',
                                 'elm-stuff/exact-dependencies.json',
                                 '**/*.elm'], {
     cwd: process.cwd(),
@@ -211,7 +211,7 @@ function startWatcher() {
   /* concers to handle
   - Package deleted -> Just report a delete event (on .elm files)  and let client deal with it.
   - Package added -> Only listen for moved directory under elm-stuff, parse package.json and only parse src directories for that package
-  - if not under elm-stuff, check if source file (remember to use latest elm-package.json)
+  - if not under elm-stuff, check if source file (remember to use latest elm.json)
   - if source file and event moved, need to stat if file is present or not to decide if add or remove !
   - On directory move stat if exists to notify of directory delete or directory add (on add parse all elm files... not very efficient though)
   */
@@ -316,7 +316,7 @@ function getProjectDeps(projectDir) {
   try {
     var depsPath = path.join(projectDir, "elm-stuff/exact-dependencies.json");
     var deps = JSON.parse(fs.readFileSync(depsPath).toString());
-    var packageJsonPath = path.join(projectDir, "elm-package.json");
+    var packageJsonPath = path.join(projectDir, "elm.json");
     var packageJson = JSON.parse(fs.readFileSync(packageJsonPath).toString());
     var exposedPackages = Object.keys(packageJson["dependencies"]);
 
@@ -401,7 +401,7 @@ function sendAstMsg(msg) {
 
 
 function getSourceDirs (projectDir) {
-  var jsonPath = path.join(projectDir, "elm-package.json");
+  var jsonPath = path.join(projectDir, "elm.json");
 
   var sourceDirs = [];
   try {
@@ -415,7 +415,7 @@ function getSourceDirs (projectDir) {
 }
 
 function getExposedModules (projectDir) {
-  var jsonPath = path.join(projectDir, "elm-package.json");
+  var jsonPath = path.join(projectDir, "elm.json");
 
   var modules = [];
   try {
@@ -588,7 +588,7 @@ function parseMakeResults(data) {
 function send(msg) { process.send(msg); }
 
 function handleLint(clientId, msg) {
-  var res = spawn.sync("elm-make",
+  var res = spawn.sync("elm make",
                [msg.path, "--warn", "--yes", "--report=json", "--output=/dev/null"],
                {cwd: process.cwd()});
 
@@ -624,7 +624,7 @@ function handleMake(clientId, msg) {
   }
 
   var outputFile = msg.outputFile || inferOutputFile(msg.path);
-  var res = spawn.sync("elm-make",
+  var res = spawn.sync("elm make",
                [msg.path, "--warn", "--yes", "--report=json", "--output=" + outputFile],
                {cwd: process.cwd()});
 
@@ -643,7 +643,7 @@ function handleMake(clientId, msg) {
 
 
 function handleGendoc(clientId, msg) {
-  var res = spawn.sync("elm-make",
+  var res = spawn.sync("elm make",
                [msg.path, "--yes", "--docs=elm-stuff/docs.json", "--output=/dev/null"],
                {cwd: process.cwd()});
 
@@ -747,14 +747,14 @@ function handleTestSuite(clientId, msg) {
 
   fs.writeFileSync(suiteFile, suite, {encoding: "utf8"}); // TODO: Error handling
   temp.open({prefix: 'elm_test_', suffix: '.js'}, function (err, info) {
-    var res = spawn.sync("elm-make",
+    var res = spawn.sync("elm make",
                [suiteFile, "--yes", "--output=" + info.path],
                {cwd: process.cwd()});
 
     var err = res.output[2] + "";
     if(err.length > 0) {
       send([clientId, "elm.test.error", {category: "compile", message: err.toString()}])
-      console.error("Error from elm-make: " + err);
+      console.error("Error from elm make: " + err);
       cleanUp();
     } else {
       evalElmCode(fs.readFileSync(info.path, {encoding: "utf8"}), cleanUp);
